@@ -1,12 +1,13 @@
 module.exports = (server) => {
     const ModuleController = require("../controllers/ModuleController");
+    const jwtverifytoken = require("../middleware/jwtMiddleware");
 
     server.route("/modules")
-        .get(ModuleController.listAllModules)
-        .post(ModuleController.createModule);
+        .get(jwtverifytoken.verifyToken, ModuleController.listAllModules)
+        .post(jwtverifytoken.verifyToken, ModuleController.createModule);
 
     server.route("/modules/:moduleId")
-        .delete(ModuleController.deleteModule)
-        .put(ModuleController.updateModule)
-        .get(ModuleController.getModuleById);
+        .delete(jwtverifytoken.verifyToken, ModuleController.deleteModule)
+        .put(jwtverifytoken.verifyToken, ModuleController.updateModule)
+        .get(jwtverifytoken.verifyToken, ModuleController.getModuleById);
 }

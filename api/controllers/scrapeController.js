@@ -1,33 +1,55 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
-const ScrapeResult = require('../models/scrapeModel');
+const Scrape = require('../models/scrapeModel');
 
 exports.scrapeWebsite = async (req, res) => {
     try {
-        const url = req.body.url;
+        const { url, selectors } = req.body;
+        const moduleId = req.params.moduleId; 
+
         const response = await axios.get(url);
         const $ = cheerio.load(response.data);
-        const pageText = $('html').text();
 
-        // Regex pour détecter des adresses e-mail
-        const emailRegex = /[\w.-]+@[\w.-]+\.\w+/g;
-        const emails = pageText.match(emailRegex) || [];
+        let professionals = [];
 
-        // Éliminer les doublons
-        const uniqueEmails = [...new Set(emails)];
+        $(selectors.container).each((i, elem) => { 
+            const professional = {
+                nom: $(elem).find(selectors.nom).text().trim(),
+                services: $(elem).find(selectors.services).text().trim(),
+                adresse: $(elem).find(selectors.adresse).text().trim(),
+                image: '', 
+                email: ''
+            };
 
-        // Préparation de la réponse HTML (si nécessaire)
-        const emailsHtml = uniqueEmails.join('<br>');
+   
+            const img = $(elem).find('img[width="160"][height="160"]').first();
+            if (img.length) {
+                const imageUrl = img.attr('src');
+                const urlBase = new URL(url).origin;
+                professional.image = imageUrl.startsWith('http') ? imageUrl : `${urlBase}${imageUrl}`;
+            }
 
-        // Sauvegarder le résultat du scraping
-        const scrapeResult = new ScrapeResult({ url, emails: uniqueEmails });
-        await scrapeResult.save();
+     
+            const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
+            if (emailHref) {
+                const emailMatch = emailHref.match(/mailto:([^?]+)/);
+                professional.email = emailMatch ? emailMatch[1] : '';
+            }
 
-        // Envoyer la réponse
-        res.send(emailsHtml);
+            professionals.push(professional);
+        });
+
+        const newScrape = new Scrape({
+            ...req.body,
+            moduleId: moduleId, 
+            professionals: professionals
+        });
+
+        const scrapeResult = await newScrape.save();
+        res.status(201).json(scrapeResult);
     } catch (error) {
         console.error('Erreur lors du scraping :', error.message);
-        res.status(500).send('Erreur lors du scraping de la page');
+        res.status(500).send('Erreur serveur.');
     }
 };
 
