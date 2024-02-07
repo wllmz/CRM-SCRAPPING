@@ -22,19 +22,15 @@ db.once('open', () => {
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-// Configuration du moteur de template EJS
-app.set('view engine', 'ejs');
-
-app.get('/', (req, res) => {
-    res.render('index');
-});
-
 
 const moduleRoute = require("../api/routes/ModuleRoute");
 moduleRoute(app);
 
 const scrapeRoute = require("../api/routes/ScrapeRoute");
 scrapeRoute(app);
+
+const userRoute = require("../api/routes/userRoute");
+userRoute(app);
 
 
 
