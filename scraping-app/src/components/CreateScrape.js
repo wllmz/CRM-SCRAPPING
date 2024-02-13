@@ -17,7 +17,7 @@ const ScrapeForm = () => {
       });
 
       console.log(response.data);
-
+      window.location.reload();
     } catch (error) {
       // Gérez les erreurs ici
       console.error("Erreur lors du scsssraping :", error);

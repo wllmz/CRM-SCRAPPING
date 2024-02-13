@@ -13,20 +13,23 @@ exports.scrapeWebsite = async (req, res) => {
         let professionals = [];
 
         $(selectors.container).each((i, elem) => {
-            const professional = {
-                nom: $(elem).find(selectors.nom).text().trim(),
-                services: $(elem).find(selectors.services).text().trim(),
-                adresse: $(elem).find(selectors.adresse).text().trim(),
-                email: ''
-            };
+            let nom = $(elem).find(selectors.nom).text().trim();
+            let services = $(elem).find(selectors.services).text().trim();
+            let adresse = $(elem).find(selectors.adresse).text().trim();
+            let email = '';
 
             const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
             if (emailHref) {
                 const emailMatch = emailHref.match(/mailto:([^?]+)/);
-                professional.email = emailMatch ? emailMatch[1] : '';
+                email = emailMatch ? emailMatch[1] : '';
             }
 
-            professionals.push(professional);
+
+            const professional = { nom, services, adresse, email };
+
+            if (!professionals.some(p => p.nom === nom && p.email === email)) {
+                professionals.push(professional);
+            }
         });
 
         const newScrape = new Scrape({
@@ -43,7 +46,6 @@ exports.scrapeWebsite = async (req, res) => {
     }
 };
 
-
 exports.listAllscrapes = async(req, res) => {
     try {
         // Récupérer le moduleId à partir des paramètres de la requête
@@ -59,98 +61,77 @@ exports.listAllscrapes = async(req, res) => {
     }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 exports.getScrapeById = async (req, res) => {
     try {
-        const scrape = await ScrapeResult.findById({ _id: req.params.scrapeId });
+        const scrapeId = req.params.scrapeId;
+        const moduleId = req.params.moduleId;
+        const scrape = await Scrape.findById(scrapeId);
+
         if (!scrape) {
             return res.status(404).json({ message: "Post non trouvé" });
         }
+
+        if (scrape.moduleId.toString() !== moduleId) {
+            return res.status(404).json({ message: "Post non trouvé pour ce module" });
+        }
+
         res.json(scrape);
     } catch (error) {
-        res.status(500).json({ message: "Erreur serveur." });
+        res.status(500).json({ message: "Erreur serveur.", error: error.message });
     }
 };
 
 
 exports.deletesScrape = async (req, res) => {
     try {
-        const result = await ScrapeResult.deleteOne({ _id: req.params.scrapeId });
+        const result = await Scrape.deleteOne({ _id: req.params.scrapeId });
         if (result.deletedCount === 0) {
             res.status(404).json({ message: "Post non trouvé" });
         } else {
             res.status(200).json({ message: "Post supprimé avec succès" });
         }
     } catch (error) {
-        res.status(500);
-        console.log(error);
-        res.json({ message: "Erreur serveur." });
+        res.status(500).json({ message: "Erreur serveur.", error: error.message });
     }
 };
 
-exports.updateScrape = async (req, res) => {
+exports.UpdateScrape = async (req, res) => {
     try {
         const scrapeId = req.params.scrapeId;
-        const { url, selectors } = req.body;
 
-        // Vérifier si le Scrape existe
         const scrape = await Scrape.findById(scrapeId);
         if (!scrape) {
             return res.status(404).json({ message: "Scrape non trouvé" });
         }
 
-        let professionals = scrape.professionals;
+        const response = await axios.get(scrape.url);
+        const $ = cheerio.load(response.data);
 
-        // Vérifier si l'URL ou les sélecteurs sont modifiés pour effectuer un nouveau scraping
-        if ((url && url !== scrape.url) || (selectors && JSON.stringify(selectors) !== JSON.stringify(scrape.selectors))) {
-            const response = await axios.get(url || scrape.url);
-            const $ = cheerio.load(response.data);
+        let professionals = [];
 
-            professionals = [];
+        $(scrape.selectors.container).each((i, elem) => {
+            const professional = {
+                nom: $(elem).find(scrape.selectors.nom).text().trim(),
+                services: $(elem).find(scrape.selectors.services).text().trim(),
+                adresse: $(elem).find(scrape.selectors.adresse).text().trim(),
+                email: ''
+            };
 
-            $(selectors.container || scrape.selectors.container).each((i, elem) => {
-                const professional = {
-                    nom: $(elem).find(selectors.nom || scrape.selectors.nom).text().trim(),
-                    services: $(elem).find(selectors.services || scrape.selectors.services).text().trim(),
-                    adresse: $(elem).find(selectors.adresse || scrape.selectors.adresse).text().trim(),
-                    email: ''
-                };
+            const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
+            if (emailHref) {
+                const emailMatch = emailHref.match(/mailto:([^?]+)/);
+                professional.email = emailMatch ? emailMatch[1] : '';
+            }
 
-                // Traitement de l'email sans la partie image
-                const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
-                if (emailHref) {
-                    const emailMatch = emailHref.match(/mailto:([^?]+)/);
-                    professional.email = emailMatch ? emailMatch[1] : '';
-                }
+            professionals.push(professional);
+        });
 
-                professionals.push(professional);
-            });
-        }
-
-        // Préparation de l'objet de mise à jour avec les données actualisées
-        const updateData = {
-            ...req.body,
-            professionals: professionals
-        };
-
-        // Mise à jour du Scrape dans la base de données
-        const updatedScrape = await Scrape.findByIdAndUpdate(scrapeId, updateData, { new: true });
+        // Mise à jour du Scrape dans la base de données avec les nouveaux professionnels
+        const updatedScrape = await Scrape.findByIdAndUpdate(scrapeId, { professionals: professionals }, { new: true });
 
         res.status(200).json(updatedScrape);
     } catch (error) {
-        console.error('Erreur lors de la mise à jour du scrape :', error.message);
-        res.status(500).send('Erreur serveur lors de la mise à jour du scrape.');
+        console.error('Erreur lors de la mise à jour forcée du scrape :', error.message);
+        res.status(500).send('Erreur serveur lors de la mise à jour forcée du scrape.');
     }
 };

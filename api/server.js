@@ -5,6 +5,8 @@ const port = 5000;
 const mongoose = require("mongoose");
 mongoose.connect("mongodb://localhost:27017/crm-scrapping");
 const cors = require('cors');
+const scrapingController = require('./controllers/scrapingController');
+
 
 app.use(cors());
 
@@ -45,3 +47,7 @@ userRoute(app);
 app.listen(port, () => {
     console.log(`Serveur démarré sur le port ${port}`);
 });
+
+
+// URL de la page Wikipedia à scraper
+scrapingController.scrapeScienceCategory();

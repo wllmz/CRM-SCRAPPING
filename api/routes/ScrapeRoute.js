@@ -6,8 +6,13 @@ module.exports = (server) => {
         .post(jwtverifytoken.verifyToken, scrapeController.scrapeWebsite)
         .get(jwtverifytoken.verifyToken, scrapeController.listAllscrapes);
 
+    server.route('/:moduleId/scrapes/:scrapeId')
+        .get(jwtverifytoken.verifyToken, scrapeController.getScrapeById);
+
     server.route('/scrapes/:scrapeId')
         .delete(jwtverifytoken.verifyToken, scrapeController.deletesScrape)
-        .get(jwtverifytoken.verifyToken, scrapeController.getScrapeById)
-        .put(jwtverifytoken.verifyToken, scrapeController.updateScrape);
+        .put(jwtverifytoken.verifyToken, scrapeController.UpdateScrape);
+
+
+
 };
