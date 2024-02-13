@@ -7,7 +7,6 @@ const scrapeSchema = new mongoose.Schema({
     nom: String,
     services: String,
     adresse: String,
-    image: String,
     email: String
   }],
   dateScraped: { type: Date, default: Date.now }
