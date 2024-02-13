@@ -4,7 +4,14 @@ const app = express();
 const port = 5000;
 const mongoose = require("mongoose");
 mongoose.connect("mongodb://localhost:27017/crm-scrapping");
+const cors = require('cors');
 
+app.use(cors());
+
+app.use(cors({
+    origin: 'http://localhost:3000'
+  }));
+  
 
 const db = mongoose.connection;
 
