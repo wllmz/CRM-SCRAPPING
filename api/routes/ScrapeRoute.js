@@ -13,6 +13,10 @@ module.exports = (server) => {
         .delete(jwtverifytoken.verifyToken, scrapeController.deletesScrape)
         .put(jwtverifytoken.verifyToken, scrapeController.UpdateScrape);
 
+    server.route('/:moduleId/scrapes/dynamique/') 
+        .post(jwtverifytoken.verifyToken, scrapeController.scrapeDynamique);
+
+
 
 
 };

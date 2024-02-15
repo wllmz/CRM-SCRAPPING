@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axiosApiInstance from '../services/axiosApi';
 import { useParams, useNavigate } from 'react-router-dom';
+
 const ScrapeList = () => {
   const [scrapes, setScrapes] = useState([]);
   const { moduleId } = useParams();
@@ -20,34 +21,46 @@ const ScrapeList = () => {
   }, [moduleId]);
 
   const handleViewMore = (scrapeId) => {
-    // Naviguer vers la route de détail du scrape en utilisant le bon identifiant
     navigate(`/${moduleId}/scrapes/${scrapeId}`);
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false // Utiliser le format 24h
+    }).format(date);
+  };
+
   return (
-<div className='container'>
-  <h2 className="mb-4">Liste des Scrapes</h2>
-  <div className="row row-cols-1 row-cols-md-2"> {/* Utilisation de row-cols-md-3 pour spécifier 3 cartes par ligne sur les écrans de taille moyenne et plus grands */}
-    {scrapes.map((scrape, index) => (
-      <div key={scrape._id} className="col mb-5"> {/* Chaque carte occupe toute la largeur sur les écrans de taille moyenne et plus grands */}
-        <div className="card h-100 shadow-sm"> {/* Utilisez h-100 pour que toutes les cartes aient la même hauteur */}
-          <div className="card-header">
-            Scrape {index + 1} - <a href={scrape.url} target="_blank" rel="noopener noreferrer">{scrape.url}</a>
-          </div>
-          <div className="card-body">
-            <button className="btn btn-primary" onClick={() => handleViewMore(scrape._id)}>Voir plus</button>
+    <div className='container'>
+    <h2 className="mb-4">Liste des Scrapes</h2>
+    <div className="row row-cols-1 row-cols-md-2">
+      {scrapes.map((scrape, index) => (
+        <div key={scrape._id} className="col mb-5">
+          <div className="card h-100 shadow-sm">
+            <div className="card-header">
+              <a> date scrape : {formatDate(scrape.dateScraped)}</a> <br></br>
+              <a> date scrape update : {scrape.lastUpdated ? formatDate(scrape.lastUpdated) : "pas d'update"}</a> <br></br>
+              Scrape {index + 1} - <a href={scrape.url} target="_blank" rel="noopener noreferrer">{scrape.url}</a>
+            </div>
+            <div className="card-body">
+              <button className="btn btn-primary" onClick={() => handleViewMore(scrape._id)}>Voir plus</button>
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-  {scrapes.length === 0 && ( /* Afficher un message si aucune scrape n'est trouvée */
-    <div className="alert alert-info mt-4" role="alert">
-      Aucun scrape trouvé pour ce module.
+      ))}
     </div>
-  )}
-</div>
-
+    {scrapes.length === 0 && (
+      <div className="alert alert-info mt-4" role="alert">
+        Aucun scrape trouvé pour ce module.
+      </div>
+    )}
+  </div>
   
   );
 };

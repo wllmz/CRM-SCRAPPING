@@ -1,5 +1,6 @@
 import React from 'react';
 import CreateScrape from '../components/CreateScrape';
+import CreateScrapeDynamique from '../components/CreateScrapeDynamique';
 import ListScrape from '../components/ListScrape';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,6 +17,7 @@ function Module() {
         <div style={{ margin: '5px' }}>
              <button onClick={goBack} className="btn btn-success">Retour</button>
             <CreateScrape />
+            <CreateScrapeDynamique />
             <ListScrape />
         </div>
     );
