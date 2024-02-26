@@ -6,6 +6,7 @@ const DetailScrape = () => {
   const [scrape, setScrape] = useState(null); // Modifier pour stocker un seul objet scrape
   const { moduleId, scrapeId } = useParams();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false); // État pour le chargement
 
   const goBack = () => {
       navigate(-1); // Cela ramène l'utilisateur à la page précédente
@@ -35,46 +36,58 @@ const DetailScrape = () => {
     }
   };
 
-  const updateScrape = async () => {
+  const updateScrape = async (e) => {
+    e.preventDefault();
+    setIsLoading(true); // Commence le chargement
     try {
       await axiosApiInstance.put(`/scrapes/${scrapeId}`);
-      navigate(0); 
+      const updatedScrape = await axiosApiInstance.get(`/${moduleId}/scrapes/${scrapeId}`);
+      setScrape(updatedScrape.data); // Met à jour les détails du scrape avec les nouvelles données
     } catch (err) {
       console.error('Erreur lors de la mise à jour du scrape', err);
+    } finally {
+      setIsLoading(false); // Arrête le chargement
     }
   };
 
   return (
     <div>
-         <button onClick={goBack} className="btn btn-success">Retour</button>
+      <button onClick={goBack} className="btn btn-success">Retour</button>
       <h2 className="mb-4">Détails du Scrape</h2>
-      {scrape ? (
-        <div className="card mb-3">
-          <ul>
-          <button onClick={deleteScrape} className="btn btn-danger">Supprimer</button>
-         <button onClick={updateScrape} className="btn btn-primary">Mettre à Jour</button>
-         </ul>
-          <div className="card-header">URL du Scrape: {scrape.url}</div>
-          {scrape.professionals && scrape.professionals.length > 0 ? (
-            <ul className="list-group list-group-flush">
-              {scrape.professionals.map((professional, index) => (
-                <li key={index} className="list-group-item">
-                  <strong>Nom:</strong> {professional.nom}<br />
-                  <strong>Services:</strong> {professional.services}<br />
-                  <strong>Adresse:</strong> {professional.adresse}<br />
-                  <strong>Email:</strong> {professional.email}
-                </li>
-                
-              ))}
-            </ul>
-          ) : (
-            <div className="card-body">Aucun professionnel trouvé pour ce scrape.</div>
-          )}
+      {isLoading ? (
+        <div className="d-flex justify-content-center mt-5">
+          <div className="spinner-border" role="status">
+            <span className="visually-hidden">Chargement...</span>
+          </div>
         </div>
       ) : (
-        <div className="alert alert-info" role="alert">
-          Aucun détail trouvé pour ce scrape.
-        </div>
+        scrape ? (
+          <div className="card mb-3">
+            <ul>
+              <button onClick={deleteScrape} className="btn btn-danger">Supprimer</button>
+              <button onClick={updateScrape} className="btn btn-primary">Mettre à Jour</button>
+            </ul>
+            <div className="card-header">URL du Scrape: <a href={scrape.url}>{scrape.url}</a> </div>
+            <div className=''> Nombre : {scrape.professionals && scrape.professionals.length} </div>
+            {scrape.professionals && scrape.professionals.length > 0 ? (
+              <ul className="list-group list-group-flush">
+                {scrape.professionals.map((professional, index) => (
+                  <li key={index} className="list-group-item">
+                    <strong>Nom:</strong> {professional.nom}<br />
+                    <strong>Services:</strong> {professional.services}<br />
+                    <strong>Email:</strong> {professional.email}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="card-body">Aucun professionnel trouvé pour ce scrape.</div>
+            )}
+          </div>
+        ) : (
+          <div className="alert alert-info" role="alert">
+            Aucun détail trouvé pour ce scrape.
+          </div>
+        )
       )}
     </div>
   );

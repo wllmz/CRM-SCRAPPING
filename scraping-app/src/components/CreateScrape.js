@@ -4,14 +4,15 @@ import { useParams } from 'react-router-dom';
 
 const ScrapeForm = () => {
   const [url, setUrl] = useState('');
-  const [selectors, setSelectors] = useState({ container: '', nom: '', services: '', adresse: '' });
+  const [selectors, setSelectors] = useState({container: '', nom: '', services: '' });
   const [show, setShow] = useState(false); // Contrôle l'affichage du modal
   const { moduleId } = useParams();
+  const scrapeType = 'statique'; // Défini comme dynamique
 
   const handleScrape = async (e) => {
     e.preventDefault();
     try {
-      const response = await axiosApiInstance.post(`/${moduleId}/scrapes`, { url, selectors });
+      const response = await axiosApiInstance.post(`/${moduleId}/scrapes`, { url, selectors, scrapeType });
       console.log(response.data);
       setShow(false); 
       window.location.reload();
@@ -58,10 +59,6 @@ const ScrapeForm = () => {
                 <div className="mb-3">
                   <label htmlFor="services" className="form-label">Services Selector:</label>
                   <input type="text" className="form-control" name="services" value={selectors.services} onChange={handleSelectorChange} required />
-                </div>
-                <div className="mb-3">
-                  <label htmlFor="adresse" className="form-label">Adresse Selector:</label>
-                  <input type="text" className="form-control" name="adresse" value={selectors.adresse} onChange={handleSelectorChange} required />
                 </div>
                 <button type="submit" className="btn btn-primary">Scrape</button>
               </form>
