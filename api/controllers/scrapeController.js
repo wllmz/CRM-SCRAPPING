@@ -16,7 +16,6 @@ exports.scrapeWebsite = async (req, res) => {
         $(selectors.container).each((i, elem) => {
             let nom = $(elem).find(selectors.nom).text().trim();
             let services = $(elem).find(selectors.services).text().trim();
-            let adresse = $(elem).find(selectors.adresse).text().trim();
             let email = '';
 
             const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
@@ -26,7 +25,7 @@ exports.scrapeWebsite = async (req, res) => {
             }
 
 
-            const professional = { nom, services, adresse, email };
+            const professional = { nom, services, email };
 
             if (!professionals.some(p => p.nom === nom && p.email === email)) {
                 professionals.push(professional);
@@ -96,58 +95,91 @@ exports.deletesScrape = async (req, res) => {
     }
 };
 
+
 exports.UpdateScrape = async (req, res) => {
     try {
         const scrapeId = req.params.scrapeId;
-
-        // Recherche du document Scrape par son ID
         const scrape = await Scrape.findById(scrapeId);
         if (!scrape) {
             return res.status(404).json({ message: "Scrape non trouvé" });
         }
 
-        // Extraction des données de la page web
-        const response = await axios.get(scrape.url);
-        const $ = cheerio.load(response.data);
-
         let professionals = [];
 
-        // Utilisation des sélecteurs pour extraire les informations
-        $(scrape.selectors.container).each((i, elem) => {
-            const professional = {
-                nom: $(elem).find(scrape.selectors.nom).text().trim(),
-                services: $(elem).find(scrape.selectors.services).text().trim(),
-                adresse: $(elem).find(scrape.selectors.adresse).text().trim(),
-                email: ''
-            };
+        if (scrape.scrapeType !== 'statique')  {
+            // Logique pour le scraping dynamique
+            const browser = await puppeteer.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.goto(scrape.url, { waitUntil: 'networkidle2' });
 
-            // Extraction de l'email si disponible
-            const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
-            if (emailHref) {
-                const emailMatch = emailHref.match(/mailto:([^?]+)/);
-                professional.email = emailMatch ? emailMatch[1] : '';
+            const professionalLinks = await page.evaluate((selector) => {
+                return Array.from(document.querySelectorAll(selector)).map(link => link.href);
+            }, scrape.selectors.linkselector);
+
+            for (const link of professionalLinks) {
+                await page.goto(link, { waitUntil: 'networkidle2' });
+
+                const professional = {
+                    nom: await extractText(page, scrape.selectors.nom),
+                    services: await extractText(page, scrape.selectors.services),
+                    email: await extractEmail(page)
+                };
+                professionals.push(professional);
             }
 
-            professionals.push(professional);
-        });
+            await browser.close();
+        } else {
+            // Logique pour le scraping statique
+            const response = await axios.get(scrape.url);
+            const $ = cheerio.load(response.data);
 
-        // Mise à jour du document Scrape avec les nouvelles informations et mise à jour de la date de dernière mise à jour
-        const updatedScrape = await Scrape.findByIdAndUpdate(
-            scrapeId, 
-            { 
-                professionals: professionals,
-                lastUpdated: new Date() // Met à jour la date de la dernière mise à jour
-            }, 
-            { new: true }
-        );
+            $(scrape.selectors.container).each((i, elem) => {
+                let nom = $(elem).find(scrape.selectors.nom).text().trim();
+                let services = $(elem).find(scrape.selectors.services).text().trim();
+                let email = extractEmailCheerio($, elem);
 
-        // Envoi de la réponse avec le document Scrape mis à jour
+                const professional = { nom, services, email };
+
+                if (!professionals.some(p => p.nom === nom && p.email === email)) {
+                    professionals.push(professional);
+                }
+            });
+        }
+
+        const updatedScrape = await Scrape.findByIdAndUpdate(scrapeId, { professionals, lastUpdated: new Date() }, { new: true });
         res.status(200).json(updatedScrape);
     } catch (error) {
-        console.error('Erreur lors de la mise à jour forcée du scrape :', error.message);
-        res.status(500).send('Erreur serveur lors de la mise à jour forcée du scrape.');
+        console.error('Erreur lors de la mise à jour du scrape :', error.message);
+        res.status(500).send('Erreur serveur lors de la mise à jour du scrape.');
     }
 };
+
+// Fonctions d'assistance pour Puppeteer
+async function extractText(page, selector) {
+    return page.evaluate(sel => {
+        const element = document.querySelector(sel);
+        return element ? element.innerText.trim() : '';
+    }, selector);
+}
+
+async function extractEmail(page) {
+    return page.evaluate(() => {
+        const emailElement = document.querySelector('a[href^="mailto:"]');
+        return emailElement ? emailElement.href.split(':')[1] : '';
+    });
+}
+
+// Fonction d'assistance pour Cheerio
+function extractEmailCheerio($, elem) {
+    const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
+    if (emailHref) {
+        const emailMatch = emailHref.match(/mailto:([^?]+)/);
+        return emailMatch ? emailMatch[1] : '';
+    }
+    return '';
+}
+
+
 
 
 exports.scrapeDynamique = async (req, res) => {
@@ -174,6 +206,7 @@ exports.scrapeDynamique = async (req, res) => {
             // Initialisation de l'objet professional avec des champs vides
             const professional = {
                 nom: '',
+                services: '',
                 email: ''
             };
 
@@ -183,6 +216,13 @@ exports.scrapeDynamique = async (req, res) => {
                     const element = document.querySelector(selector);
                     return element ? element.innerText.trim() : 'Nom non trouvé';
                 }, selectors.nom);
+            }
+
+            if (selectors.services) {
+                professional.services = await page.evaluate((selector) => {
+                    const element = document.querySelector(selector);
+                    return element ? element.innerText.trim() : 'Services non trouvés';
+                }, selectors.services);
             }
 
             // Extraction de l'email sans avoir besoin de préciser un sélecteur

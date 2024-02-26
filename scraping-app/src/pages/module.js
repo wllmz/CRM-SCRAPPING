@@ -14,12 +14,20 @@ function Module() {
 
 
     return (
-        <div style={{ margin: '5px' }}>
-             <button onClick={goBack} className="btn btn-success">Retour</button>
+<div style={{ margin: '5px' }}>
+    <button onClick={goBack} className="btn btn-success">Retour</button>
+    <div className="row justify-content-center">
+        <div className="col-auto">
             <CreateScrape />
-            <CreateScrapeDynamique />
-            <ListScrape />
         </div>
+        <div className="col-auto">
+            <CreateScrapeDynamique />
+        </div>
+    </div>
+    <ListScrape />
+</div>
+
+    
     );
 }
 
