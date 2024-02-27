@@ -40,6 +40,9 @@ scrapeRoute(app);
 const userRoute = require("../api/routes/userRoute");
 userRoute(app);
 
+const brevoRoute = require("../api/routes/brevoRoute");
+brevoRoute(app);
+
 
 
 // Démarrer le serveur
