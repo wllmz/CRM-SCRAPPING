@@ -5,7 +5,7 @@ import "bootstrap/dist/js/bootstrap.min.js";
 import Connexion from './pages/Connexion';
 import Dashboard from './pages/dashboard';
 import ModuleDetail from './pages/module';
-import DetailScrape from './components/DetailScrape';
+import Scrape from './pages/Scrape';
 
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
           <Route path="/" element={<Connexion />} />
           <Route path="/Dashboard" element={<Dashboard />} />
           <Route path="/modules/:moduleId" element={<ModuleDetail />} />
-          <Route path="/:moduleId/scrapes/:scrapeId" element={<DetailScrape />} />
+          <Route path="/:moduleId/scrapes/:scrapeId" element={<Scrape />} />
         </Routes>
       </div>
     </Router>

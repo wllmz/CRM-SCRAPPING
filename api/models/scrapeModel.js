@@ -9,6 +9,8 @@ const scrapeSchema = new mongoose.Schema({
     nom: { type: String },
     services: { type: String },
     linkselector: { type: String}, 
+    formSelectors: { type: Map, of: String }, // Pour stocker les sélecteurs de formulaire et les valeurs
+    dataSelectors: { type: Map, of: String }, // Pour stocker les sélecteurs des données à extraire après la soumission
   },
   professionals: [{
     nom: String,

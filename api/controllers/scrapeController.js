@@ -251,3 +251,45 @@ exports.scrapeDynamique = async (req, res) => {
         res.status(500).send('Erreur serveur lors du scraping dynamique.');
     }
 };
+
+
+
+
+async function scrapeParisSagesFemmes() {
+    const browser = await puppeteer.launch({ headless: false }); // Pour voir le déroulement en direct, utilisez headless: false
+    const page = await browser.newPage();
+
+    // Accéder à la page
+    await page.goto('https://www.ordre-sages-femmes.fr/annuairesflib/', { waitUntil: 'networkidle2' });
+
+    // Sélectionner "02 - AISNE" dans le menu déroulant (ajustez selon le besoin)
+    await page.select('#seldeptsf', '02');
+
+    // Exécuter la fonction de recherche directement
+    await page.evaluate(() => rchflib());
+
+    // Attendre que les résultats soient chargés, identifier un élément caractéristique des résultats
+    await page.waitForSelector('h2', { timeout: 60000 }); // Assurez-vous que ce sélecteur correspond à un élément des résultats
+
+    // Extraire les textes des éléments h2
+    const h2Texts = await page.evaluate(() => {
+        const h2s = Array.from(document.querySelectorAll('h2'));
+        return h2s.map(h2 => h2.innerText.trim());
+    });
+
+    // Fermer le navigateur
+    await browser.close();
+
+    // Retourner les textes récupérés
+    return h2Texts;
+}
+
+exports.scrapeParis = async (req, res) => {
+    try {
+        const h2Texts = await scrapeParisSagesFemmes();
+        res.json({ success: true, data: h2Texts });
+    } catch (error) {
+        console.error('Scrape error:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors du scraping' });
+    }
+};

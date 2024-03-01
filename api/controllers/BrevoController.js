@@ -23,12 +23,13 @@ exports.sendScrapeToBrevo = async function(req, res) {
         const listName = req.body.listName;
         const scrapeData = await getScrapeById(scrapeId);
 
-
         const brevoList = await BrevoList.findOne({ name: listName });
         if (!brevoList) {
             return res.status(404).json({ message: 'Brevo list not found' });
         }
 
+        let sentContacts = 0;
+        let failedContacts = 0;
         if (scrapeData.professionals && scrapeData.professionals.length > 0) {
             for (const professional of scrapeData.professionals) {
                 let ext_id = uuidv4();
@@ -46,17 +47,25 @@ exports.sendScrapeToBrevo = async function(req, res) {
                     smtpBlacklistSender: []
                 };
 
-                await axios.post('https://api.brevo.com/v3/contacts', transformedData, {
-                    headers: {
-                        'accept': 'application/json',
-                        'api-key': brevoAPIKey,
-                        'content-type': 'application/json'
-                    }
-                });
+                try {
+                    await axios.post('https://api.brevo.com/v3/contacts', transformedData, {
+                        headers: {
+                            'accept': 'application/json',
+                            'api-key': brevoAPIKey,
+                            'content-type': 'application/json'
+                        }
+                    });
+                    sentContacts++;
+                } catch (error) {
+                    console.error('Error sending contact to Brevo:', error);
+                    // Traiter l'erreur spécifique ici, par exemple enregistrer l'erreur ou ignorer le contact
+                    failedContacts++;
+                    // Continuer avec le prochain contact sans arrêter la boucle
+                }
             }
 
             res.status(200).json({
-                message: 'Scrape data sent successfully to Brevo',
+                message: `Scrape data sent successfully to Brevo. Sent: ${sentContacts}, Failed: ${failedContacts}`,
             });
         } else {
             res.status(404).json({ message: 'No professionals found in scrape data' });
@@ -66,6 +75,8 @@ exports.sendScrapeToBrevo = async function(req, res) {
         res.status(500).json({ message: 'Error sending scrape data to Brevo', error: error.message });
     }
 };
+
+
 
 exports.getBrevoContactLists = async function(req, res) {
   try {
@@ -83,7 +94,7 @@ exports.getBrevoContactLists = async function(req, res) {
 
       // Convertir la liste des brevoIds en un tableau pour la comparaison
       const brevoIds = response.data.lists.map(list => list.id);
-
+        
       // Mettre à jour les entrées existantes et ajouter de nouvelles entrées
       const updatePromises = response.data.lists.map(list => {
           return BrevoList.findOneAndUpdate(
