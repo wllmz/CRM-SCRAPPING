@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import axiosApiInstance from '../services/axiosApi';
 import { useParams, useNavigate } from 'react-router-dom';
+import ListofList from '../components/ListofList';
+
 
 const DetailScrape = () => {
   const [scrape, setScrape] = useState(null); // Modifier pour stocker un seul objet scrape
   const { moduleId, scrapeId } = useParams();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false); // État pour le chargement
+  
 
   const goBack = () => {
       navigate(-1); // Cela ramène l'utilisateur à la page précédente
@@ -66,6 +69,7 @@ const DetailScrape = () => {
             <ul>
               <button onClick={deleteScrape} className="btn btn-danger">Supprimer</button>
               <button onClick={updateScrape} className="btn btn-primary">Mettre à Jour</button>
+              <ListofList/>
             </ul>
             <div className="card-header">URL du Scrape: <a href={scrape.url}>{scrape.url}</a> </div>
             <div className=''> Nombre : {scrape.professionals && scrape.professionals.length} </div>

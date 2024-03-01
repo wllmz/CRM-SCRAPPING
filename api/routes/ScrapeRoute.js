@@ -16,7 +16,8 @@ module.exports = (server) => {
     server.route('/:moduleId/scrapes/dynamique/') 
         .post(jwtverifytoken.verifyToken, scrapeController.scrapeDynamique);
 
+    server.route('/:moduleId/scrapes/form/') 
+        .post(jwtverifytoken.verifyToken, scrapeController.scrapeParis);
 
-
-
+    
 };
