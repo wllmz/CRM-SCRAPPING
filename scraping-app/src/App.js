@@ -8,6 +8,7 @@ import ModuleDetail from './pages/module';
 import Scrape from './pages/Scrape';
 
 
+
 function App() {
   return (
     <Router>
