@@ -1,52 +1,47 @@
+// Importations nécessaires
 const express = require('express');
-const bodyParser = require('body-parser');
 const app = express();
-const port = 5000;
-const mongoose = require("mongoose");
-mongoose.connect("mongodb://localhost:27017/crm-scrapping");
+require('dotenv').config();
 const cors = require('cors');
 
+// Configuration du port
+const port = process.env.PORT || 5000;
 
-app.use(cors());
-
+// Configuration de CORS pour autoriser uniquement les requêtes provenant d'un certain origine
 app.use(cors({
     origin: 'http://localhost:3000'
-  }));
-  
+}));
 
-const db = mongoose.connection;
+// Configuration de la connexion à MongoDB
+const mongoose = require('mongoose');
+mongoose
+  .connect(process.env.MONGOURL)
+  .then(() => {
+    console.log("Successfully connected to MongoDB.");
+    // initial(); // Assurez-vous que cette fonction est définie quelque part si vous avez l'intention de l'utiliser.
+  })
+  .catch((err) => {
+    console.error("Connection error", err);
+    process.exit(1);
+  });
 
-// Gestionnaire d'erreurs de connexion
-db.on('error', (error) => {
-    console.error('Erreur de connexion à MongoDB:', error);
-});
+// Middleware pour analyser le corps des requêtes en JSON et URL-encoded
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
 
-// Confirmation de la connexion réussie
-db.once('open', () => {
-    console.log('Connecté avec succès à MongoDB');
-});
-
-// Body Parser Middleware
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-
-
+// Importation des routes
 const moduleRoute = require("../api/routes/ModuleRoute");
-moduleRoute(app);
-
 const scrapeRoute = require("../api/routes/ScrapeRoute");
-scrapeRoute(app);
-
 const userRoute = require("../api/routes/userRoute");
-userRoute(app);
-
 const brevoRoute = require("../api/routes/brevoRoute");
+
+// Utilisation des routes
+moduleRoute(app);
+scrapeRoute(app);
+userRoute(app);
 brevoRoute(app);
 
-
-
-// Démarrer le serveur
+// Démarrage du serveur
 app.listen(port, () => {
-    console.log(`Serveur démarré sur le port ${port}`);
+    console.log(`Server running on port ${port}`);
 });
-
