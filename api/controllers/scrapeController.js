@@ -286,7 +286,6 @@ exports.scrapeDynamiqueSagesFemmes = async (req, res) => {
         await page.waitForSelector(resultSelector, { timeout: 60000 });
         await page.waitForSelector(containerSelector, { timeout: 60000 });
 
-        // Extraction des informations des professionnels
         const professionals = await page.evaluate((containerSelector) => {
             const containers = Array.from(document.querySelectorAll(containerSelector));
             return containers.map(container => {
@@ -299,7 +298,7 @@ exports.scrapeDynamiqueSagesFemmes = async (req, res) => {
                     telephonefixe: infos.find(info => info.startsWith('Tél :'))?.replace('Tél : ', '') || '',
                     tel: infos.find(info => info.startsWith('Mobile :'))?.replace('Mobile : ', '') || '',
                     email: infos.find(info => info.startsWith('Mail :'))?.replace('Mail : ', '') || '',
-                    // Pas besoin d'ajouter `services` ici car il sera ajouté après
+        
                 };
                 return professional;
             });
@@ -307,22 +306,20 @@ exports.scrapeDynamiqueSagesFemmes = async (req, res) => {
 
         await browser.close();
 
-        // Ajout des services spécifiés dans la requête à chaque professionnel
         const professionalsWithServices = professionals.map(professional => ({
             ...professional,
-            services // Ajout de l'information des services à chaque professionnel
+            services 
         }));
 
-        // Création et sauvegarde de l'objet Scrape avec les professionnels enrichis
         const newScrape = new Scrape({
             url,
             scrapeType: 'dynamique',
             moduleId,
             selectors: {
                 container: containerSelector,
-                // Les autres sélecteurs si nécessaire
+
             },
-            professionals: professionalsWithServices, // Utiliser les professionnels enrichis avec les services
+            professionals: professionalsWithServices, 
             dateScraped: new Date(),
         });
 
