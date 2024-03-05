@@ -96,6 +96,10 @@ exports.deletesScrape = async (req, res) => {
 };
 
 
+
+
+
+
 exports.UpdateScrape = async (req, res) => {
     try {
         const scrapeId = req.params.scrapeId;
@@ -106,8 +110,7 @@ exports.UpdateScrape = async (req, res) => {
 
         let professionals = [];
 
-        if (scrape.scrapeType !== 'statique')  {
-            // Logique pour le scraping dynamique
+        if (scrape.scrapeType !== 'statique') {
             const browser = await puppeteer.launch({ headless: true });
             const page = await browser.newPage();
             await page.goto(scrape.url, { waitUntil: 'networkidle2' });
@@ -122,23 +125,24 @@ exports.UpdateScrape = async (req, res) => {
                 const professional = {
                     nom: await extractText(page, scrape.selectors.nom),
                     services: await extractText(page, scrape.selectors.services),
-                    email: await extractEmail(page)
+                    email: await extractEmail(page),
+                    tel: await extractTel(page) // Ajoutez cette ligne pour récupérer le tel
                 };
                 professionals.push(professional);
             }
 
             await browser.close();
         } else {
-            // Logique pour le scraping statique
             const response = await axios.get(scrape.url);
             const $ = cheerio.load(response.data);
 
             $(scrape.selectors.container).each((i, elem) => {
-                let nom = $(elem).find(scrape.selectors.nom).text().trim();
-                let services = $(elem).find(scrape.selectors.services).text().trim();
-                let email = extractEmailCheerio($, elem);
+                const nom = $(elem).find(scrape.selectors.nom).text().trim();
+                const services = $(elem).find(scrape.selectors.services).text().trim();
+                const email = extractEmailCheerio($, elem);
+                const tel = extractTelCheerio($, elem); // Utilisez cette fonction pour le tel
 
-                const professional = { nom, services, email };
+                const professional = { nom, services, email, tel }; // Ajoutez `tel` ici
 
                 if (!professionals.some(p => p.nom === nom && p.email === email)) {
                     professionals.push(professional);
@@ -169,48 +173,60 @@ async function extractEmail(page) {
     });
 }
 
-// Fonction d'assistance pour Cheerio
+async function extractTel(page) {
+    return page.evaluate(() => {
+        const telElement = document.querySelector('a[href^="tel:"]');
+        return telElement ? telElement.href.split(':')[1] : '';
+    });
+}
+
+// Fonctions d'assistance pour Cheerio
 function extractEmailCheerio($, elem) {
     const emailHref = $(elem).find('a[href^="mailto:"]').attr('href');
-    if (emailHref) {
-        const emailMatch = emailHref.match(/mailto:([^?]+)/);
-        return emailMatch ? emailMatch[1] : '';
-    }
-    return '';
+    return emailHref ? emailHref.split(':')[1] : '';
+}
+
+function extractTelCheerio($, elem) {
+    const telHref = $(elem).find('a[href^="tel:"]').attr('href');
+    return telHref ? telHref.split(':')[1] : '';
 }
 
 
 
 
+
 exports.scrapeDynamique = async (req, res) => {
-    // Récupération des paramètres depuis le corps de la requête
-    const { url, selectors } = req.body; // Utiliser un objet selectors pour une configuration dynamique
+    const { url, selectors } = req.body;
     const moduleId = req.params.moduleId;
 
     try {
-        const browser = await puppeteer.launch({ headless: true }); // Passer à headless: true pour un fonctionnement en production
+        const browser = await puppeteer.launch({ headless: true });
         const page = await browser.newPage();
-        await page.goto(url, { waitUntil: 'networkidle2' });
+        // Augmenter le délai d'attente si nécessaire
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-        // Utilisation du sélecteur pour extraire les URLs des professionnels
         const professionalLinks = await page.evaluate((selector) => {
             const links = Array.from(document.querySelectorAll(selector));
             return links.map(link => link.href);
-        }, selectors.linkselector); // Utilisation de selectors.linkselector
+        }, selectors.linkselector);
 
         let professionals = [];
 
         for (const link of professionalLinks) {
-            await page.goto(link, { waitUntil: 'networkidle2' });
+            try {
+                // Gestion des erreurs pour chaque navigation
+                await page.goto(link, { waitUntil: 'domcontentloaded', timeout: 60000 });
+            } catch (error) {
+                console.error(`Erreur lors de la navigation vers ${link}:`, error);
+                continue; // Continue avec le prochain lien en cas d'erreur
+            }
 
-            // Initialisation de l'objet professional avec des champs vides
             const professional = {
                 nom: '',
                 services: '',
                 email: ''
             };
 
-            // Extraction du nom en utilisant le sélecteur dynamique fourni
             if (selectors.nom) {
                 professional.nom = await page.evaluate((selector) => {
                     const element = document.querySelector(selector);
@@ -225,7 +241,6 @@ exports.scrapeDynamique = async (req, res) => {
                 }, selectors.services);
             }
 
-            // Extraction de l'email sans avoir besoin de préciser un sélecteur
             professional.email = await page.evaluate(() => {
                 const emailElement = document.querySelector('a[href^="mailto:"]');
                 return emailElement ? emailElement.href.split(':')[1] : 'Email non trouvé';
@@ -236,11 +251,10 @@ exports.scrapeDynamique = async (req, res) => {
 
         await browser.close();
 
-        // Création d'un nouvel objet Scrape avec les données extraites
         const newScrape = new Scrape({
             url,
             moduleId,
-            selectors, // Inclure les sélecteurs utilisés pour le scraping
+            selectors,
             professionals
         });
 
@@ -254,42 +268,69 @@ exports.scrapeDynamique = async (req, res) => {
 
 
 
+exports.scrapeDynamiqueSagesFemmes = async (req, res) => {
+    // Extraction des informations à partir de la requête
+    const { url, departementSelector, departementValue, resultSelector, containerSelector, services } = req.body;
+    const moduleId = req.params.moduleId;
 
-async function scrapeParisSagesFemmes() {
-    const browser = await puppeteer.launch({ headless: false }); // Pour voir le déroulement en direct, utilisez headless: false
-    const page = await browser.newPage();
-
-    // Accéder à la page
-    await page.goto('https://www.ordre-sages-femmes.fr/annuairesflib/', { waitUntil: 'networkidle2' });
-
-    // Sélectionner "02 - AISNE" dans le menu déroulant (ajustez selon le besoin)
-    await page.select('#seldeptsf', '02');
-
-    // Exécuter la fonction de recherche directement
-    await page.evaluate(() => rchflib());
-
-    // Attendre que les résultats soient chargés, identifier un élément caractéristique des résultats
-    await page.waitForSelector('h2', { timeout: 60000 }); // Assurez-vous que ce sélecteur correspond à un élément des résultats
-
-    // Extraire les textes des éléments h2
-    const h2Texts = await page.evaluate(() => {
-        const h2s = Array.from(document.querySelectorAll('h2'));
-        return h2s.map(h2 => h2.innerText.trim());
-    });
-
-    // Fermer le navigateur
-    await browser.close();
-
-    // Retourner les textes récupérés
-    return h2Texts;
-}
-
-exports.scrapeParis = async (req, res) => {
     try {
-        const h2Texts = await scrapeParisSagesFemmes();
-        res.json({ success: true, data: h2Texts });
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: 'networkidle2' });
+
+        if (departementSelector && departementValue) {
+            await page.select(departementSelector, departementValue);
+            await page.evaluate(() => rchflib());
+        }
+
+        await page.waitForSelector(resultSelector, { timeout: 60000 });
+        await page.waitForSelector(containerSelector, { timeout: 60000 });
+
+        // Extraction des informations des professionnels
+        const professionals = await page.evaluate((containerSelector) => {
+            const containers = Array.from(document.querySelectorAll(containerSelector));
+            return containers.map(container => {
+                const nom = container.querySelector('h2') ? container.querySelector('h2').innerText.trim() : '';
+                const infos = Array.from(container.querySelectorAll('span')).map(span => span.innerText.trim());
+                const professional = {
+                    nom, 
+                    adresse: infos[0],
+                    adressepart2: infos[1], 
+                    telephonefixe: infos.find(info => info.startsWith('Tél :'))?.replace('Tél : ', '') || '',
+                    tel: infos.find(info => info.startsWith('Mobile :'))?.replace('Mobile : ', '') || '',
+                    email: infos.find(info => info.startsWith('Mail :'))?.replace('Mail : ', '') || '',
+                    // Pas besoin d'ajouter `services` ici car il sera ajouté après
+                };
+                return professional;
+            });
+        }, containerSelector);
+
+        await browser.close();
+
+        // Ajout des services spécifiés dans la requête à chaque professionnel
+        const professionalsWithServices = professionals.map(professional => ({
+            ...professional,
+            services // Ajout de l'information des services à chaque professionnel
+        }));
+
+        // Création et sauvegarde de l'objet Scrape avec les professionnels enrichis
+        const newScrape = new Scrape({
+            url,
+            scrapeType: 'dynamique',
+            moduleId,
+            selectors: {
+                container: containerSelector,
+                // Les autres sélecteurs si nécessaire
+            },
+            professionals: professionalsWithServices, // Utiliser les professionnels enrichis avec les services
+            dateScraped: new Date(),
+        });
+
+        await newScrape.save();
+
+        res.status(201).json({ success: true, message: "Les données ont été sauvegardées avec succès.", data: professionalsWithServices });
     } catch (error) {
-        console.error('Scrape error:', error);
-        res.status(500).json({ success: false, message: 'Erreur lors du scraping' });
+        console.error('Erreur lors du scraping dynamique:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors du scraping dynamique' });
     }
 };

@@ -15,7 +15,11 @@ const scrapeSchema = new mongoose.Schema({
   professionals: [{
     nom: String,
     services: String,
-    email: String
+    email: String,
+    tel: String,
+    telephonefixe: String,
+    adresse: String,
+    adressepart2: String,
   }],
   dateScraped: { type: Date, default: Date.now },
   lastUpdated: { type: Date } 

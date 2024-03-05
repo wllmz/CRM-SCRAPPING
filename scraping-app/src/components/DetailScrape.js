@@ -102,7 +102,8 @@ const DetailScrape = () => {
                               <ListGroup.Item key={index}>
                                   <strong>Nom:</strong> {professional.nom}<br />
                                   <strong>Services:</strong> {professional.services}<br />
-                                  <strong>Email:</strong> {professional.email}
+                                  <strong>Email:</strong> {professional.email}<br />
+                                  <strong>Tel:</strong> {professional.tel}
                               </ListGroup.Item>
                           ))
                       ) : (
