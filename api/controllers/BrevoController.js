@@ -38,7 +38,8 @@ exports.sendScrapeToBrevo = async function(req, res) {
                     ext_id: ext_id,
                     attributes: {
                         NOM: professional.nom,
-                        SERVICES: professional.services
+                        SERVICES: professional.services,
+                        TELEPHONE : professional.tel
                     },
                     emailBlacklisted: false,
                     smsBlacklisted: false,
