@@ -19,5 +19,9 @@ module.exports = (server) => {
     server.route('/:moduleId/scrapes/form/') 
         .post(jwtverifytoken.verifyToken, scrapeController.scrapeDynamiqueSagesFemmes  );
 
+
+    server.route('/:moduleId/scrapes/map/') 
+        .post(jwtverifytoken.verifyToken, scrapeController.scrapeDynamicH2ContentsAndContactInfo  );
+
     
 };

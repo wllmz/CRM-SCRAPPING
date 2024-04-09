@@ -331,3 +331,73 @@ exports.scrapeDynamiqueSagesFemmes = async (req, res) => {
         res.status(500).json({ success: false, message: 'Erreur lors du scraping dynamique' });
     }
 };
+
+
+exports.scrapeDynamicH2ContentsAndContactInfo = async (req, res) => {
+    const { baseUrl } = req.body;
+    const moduleId = req.params.moduleId;
+
+    try {
+        const browser = await puppeteer.launch({ headless: false });
+        const page = await browser.newPage();
+        const professionals = [];
+
+        for (let i = 300; i <= 400; i++) {
+            const url = `${baseUrl}/?f=${i}`;
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+
+            const result = await page.evaluate(() => {
+                const h2 = document.querySelector('h2') ? document.querySelector('h2').innerText.trim() : '';
+                let tel = '', email = '';
+
+                // Extraction basée sur le texte intégral de la page pour le téléphone et l'email
+                const bodyText = document.body.innerText;
+
+                // Essayer d'extraire le téléphone s'il est mentionné
+                const phoneMatch = bodyText.match(/Téléphone\s*:\s*([\s\S]*?)\n/);
+                if (phoneMatch && phoneMatch[1]) {
+                    tel = phoneMatch[1].trim();
+                }
+
+                // Essayer d'extraire l'email s'il est mentionné
+                const emailMatch = bodyText.match(/Email\s*:\s*([\s\S]*?)\n/);
+                if (emailMatch && emailMatch[1]) {
+                    email = emailMatch[1].trim();
+                }
+
+                // Vérifier si h2 contient du texte
+                if (h2 && email) { // Si `h2` et `email` ne sont pas vides
+                    return {
+                        url: window.location.href,
+                        nom: h2,
+                        tel: tel,
+                        email: email,
+                    };
+                } else {
+                    return null; // Retourner null si h2 est vide ou si email est vide
+                }
+            });
+
+            // Ajoute le résultat aux résultats si ce n'est pas null
+            if (result) {
+                professionals.push({ ...result });
+            }
+        }
+
+        await browser.close();
+
+        const newScrape = new Scrape({
+            url: baseUrl,
+            scrapeType: 'dynamique',
+            moduleId,
+            professionals,
+            dateScraped: new Date(),
+        });
+
+        await newScrape.save();
+  res.status(201).json({ success: true, message: "Les données ont été sauvegardées avec succès.", data: professionals });
+    } catch (error) {
+        console.error('Erreur lors du scraping dynamique:', error);
+        res.status(500).json({ success: false, message: 'Erreur lors du scraping dynamique', error: error.message });
+    }
+};
