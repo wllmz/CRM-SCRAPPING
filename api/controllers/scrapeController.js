@@ -200,7 +200,7 @@ exports.scrapeDynamique = async (req, res) => {
     const moduleId = req.params.moduleId;
 
     try {
-        const browser = await puppeteer.launch({ headless: true });
+        const browser = await puppeteer.launch({ headless: false });
         const page = await browser.newPage();
         // Augmenter le délai d'attente si nécessaire
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
